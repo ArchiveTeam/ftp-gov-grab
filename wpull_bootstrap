@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+# Wrapper script to find a wpull module.
+# Adjust path of Python (3.2, 3.3, 3.4 etc) as needed.
+
+if __name__ == '__main__':
+    # Adjust the path of the packages directory as needed
+    # import sys
+    # sys.path.insert(0, 'MYPYTHONPATH/')
+    import wpull.__main__
+    wpull.__main__.main()
