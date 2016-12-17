@@ -39,10 +39,10 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.8.3"):
 # 2. prints the required version string
 WPULL_EXE = find_executable(
     "Wpull",
-    re.compile(r"\b1\.2\b"),
+    re.compile(r"\b1\.2\.3\b"),
     [
         "./wpull",
-        os.path.expanduser("~/.local/share/wpull-1.2/wpull"),
+        os.path.expanduser("~/.local/share/wpull-1.2.3/wpull"),
         os.path.expanduser("~/.local/bin/wpull"),
         "./wpull_bootstrap",
         "wpull",
@@ -58,8 +58,8 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20160304.01"
-TRACKER_ID = 'ftp'
+VERSION = "20161217.01"
+TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
 
@@ -150,7 +150,7 @@ def get_hash(filename):
 
 CWD = os.getcwd()
 PIPELINE_SHA1 = get_hash(os.path.join(CWD, 'pipeline.py'))
-SCRIPT_SHA1 = get_hash(os.path.join(CWD, 'ftp.py'))
+SCRIPT_SHA1 = get_hash(os.path.join(CWD, 'ftp-gov.py'))
 
 
 def stats_id_function(item):
@@ -169,7 +169,7 @@ class WgetArgs(object):
         wget_args = [
             WPULL_EXE,
             "-nv",
-            "--python-script", "ftp.py",
+            "--python-script", "ftp-gov.py",
             "-o", ItemInterpolation("%(item_dir)s/wpull.log"),
             "--no-check-certificate",
             "--database", ItemInterpolation("%(item_dir)s/wpull.db"),
@@ -184,15 +184,13 @@ class WgetArgs(object):
             "--waitretry", "5",
             "--warc-file", ItemInterpolation("%(item_dir)s/%(warc_file_base)s"),
             "--warc-header", "operator: Archive Team",
-            "--warc-header", "ftp-dld-script-version: " + VERSION,
-            "--warc-header", ItemInterpolation("ftp-user: %(item_name)s"),
+            "--warc-header", "ftp-gov-dld-script-version: " + VERSION,
+            "--warc-header", ItemInterpolation("ftp-gov-item: %(item_name)s"),
             ]
 
         item_name = item['item_name']
         assert ':' in item_name
-        item_sort, item_item, item_file = item_name.split(':', 2)
-
-        item['item_item'] = item_item
+        item_sort, item_file = item_name.split(':', 1)
 
         MAX_SIZE = 10737418240
         
@@ -203,19 +201,20 @@ class WgetArgs(object):
         for skipped_item in skipped_items:
             if item_file.startswith(skipped_item):
                 raise Exception('This FTP will be skipped...')
-        
-        item_list = requests.get('http://archive.org/download/{0}/{1}'.format(item_item, item_file))
+
+        item_url = 'http://master.newsbuddy.net/ftplists/{0}'.format(item_file)
+        item_list = requests.get(item_url)
         if item_list.status_code != 200:
-            raise Exception('You received status code %d with URL %s. ABORTING.'%(item_list.status_code, 'https://archive.org/download/{0}/{1}'.format(item_item, item_file)))
+            raise Exception('You received status code %d with URL %s. ABORTING.'%(item_list.status_code, item_url))
         itemsize = int(re.search(r'ITEM_TOTAL_SIZE: ([0-9]+)', item_list.text).group(1))
         if itemsize > MAX_SIZE:
             raise Exception('Item is %d bytes. This is larger then %d bytes. ABORTING.'%(itemsize, MAX_SIZE))
+
         for url in item_list.text.splitlines():
             if url.startswith('ftp://'):
                 url = url.replace('&#32;', '%20').replace('&amp;', '&')
                 url = urllib.unquote(url)
-                if item_item == 'archiveteam_ftp_items_2015120102':
-                    url = url.replace('ftp://ftp.research.microsoft.com/downloads/downloads/', 'ftp://ftp.research.microsoft.com/downloads/')
+
                 if '#' in url:
                     raise Exception('%s containes a bad character.'%(url))
                 else:
@@ -237,12 +236,12 @@ class WgetArgs(object):
 # This will be shown in the warrior management panel. The logo should not
 # be too big. The deadline is optional.
 project = Project(
-    title="ftp",
+    title="ftp-gov",
     project_html="""
-        <img class="project-logo" alt="Project logo" src="http://archiveteam.org/images/thumb/f/f3/Archive_team.png/235px-Archive_team.png" height="50px" title=""/>
-        <h2>FTP <span class="links"><a href="http://archiveteam.org/index.php?title=FTP">Website</a> &middot;
-            <a href="http://tracker.archiveteam.org/ftp/">Leaderboard</a></span></h2>
-        <p>Archiving all FTPs!</p>
+        <img class="project-logo" alt="Project logo" src="http://archiveteam.org/images/thumb/0/09/NOAA_logo.png/240px-NOAA_logo.png" height="50px" title=""/>
+        <h2>USA-Gov <span class="links"><a href="http://archiveteam.org/index.php?title=USA-Gov">Website</a> &middot;
+            <a href="http://tracker.archiveteam.org/ftp-gov/">Leaderboard</a></span></h2>
+        <p>Archiving all government FTPs!</p>
     """
 )
 
@@ -250,14 +249,13 @@ pipeline = Pipeline(
     CheckIP(),
     GetItemFromTracker("http://%s/%s" % (TRACKER_HOST, TRACKER_ID), downloader,
                        VERSION),
-    PrepareDirectories(warc_prefix="ftp"),
+    PrepareDirectories(warc_prefix="ftp-gov"),
     WgetDownload(
         WgetArgs(),
         max_tries=1,
         accept_on_exit_code=[0, 8],
         env={
             "item_dir": ItemValue("item_dir"),
-            "item_item": ItemValue("item_item"),
             "downloader": downloader
         }
     ),
@@ -272,7 +270,7 @@ pipeline = Pipeline(
     ),
     MoveFiles(),
     LimitConcurrent(
-        NumberConfigValue(min=1, max=4, default="1",
+        NumberConfigValue(min=1, max=20, default="20",
                           name="shared:rsync_threads", title="Rsync threads",
                           description="The maximum number of concurrent uploads."),
         UploadWithTracker(

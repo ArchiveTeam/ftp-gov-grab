@@ -6,7 +6,6 @@ import re
 wpull_hook = globals().get('wpull_hook') # silence code checkers
 tries = 0
 max_tries = 5
-item_item = os.environ['item_item']
 
 def handle_response(url_info, record_info, response_info):
     global tries
@@ -30,17 +29,19 @@ def handle_response(url_info, record_info, response_info):
 
 def handle_error(url_info, record_info, error_info):
     global max_tries
-    global item_item
 
     tries = record_info['try_count']
-    if url_info['url'].endswith('/'):
-        item_file = re.search(r'^ftp:\/\/([^/]+)', url_info['url']).group(1) + '_dir_not_found'
-    else:
-        item_file = re.search(r'^ftp:\/\/([^/]+)', url_info['url']).group(1) + '_file_not_found'
+    ftp_server = re.search(r'^ftp:\/\/([^/]+)', url_info['url']).group(1)
 
-    item_message = urllib.request.urlopen('http://archive.org/download/{0}/{1}'.format(item_item, item_file))
+    if url_info['url'].endswith('/'):
+        item_file = ftp_server + '_dir_not_found'
+    else:
+        item_file = ftp_server + '_file_not_found'
+
+    item_url = 'http://master.newsbuddy.net/ftplists/{0}'.format(item_file)
+    item_message = urllib.request.urlopen(item_url)
     if not item_message.getcode() in (200, 404):
-        raise Exception('You received status code %d with URL %s'%(item_list.status_code, 'https://archive.org/download/{0}/{1}'.format(item_item, item_file)))
+        raise Exception('You received status code %d with URL %s'%(item_list.status_code, item_url))
     item_message_text = item_message.read()
     if '/NONEXISTINGFILEdgdjahxnedadbacxjbc' in item_message_text.decode('utf-8'):
         item_messages = item_message_text.decode('utf-8').split('/NONEXISTINGFILEdgdjahxnedadbacxjbc')
