@@ -61,7 +61,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20161228.01"
+VERSION = "20161228.02"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -223,9 +223,6 @@ class WgetArgs(object):
         item_sort, item_file = item_name.split(':', 1)
 
         MAX_SIZE = 10737418240
-
-        if 'aftp.cmdl.noaa.gov' in item_file:
-            raise Exception('Skipping this FTP.')
         
         skipped = requests.get('https://raw.githubusercontent.com/ArchiveTeam/ftp-items/master/skipped_sites')
         if skipped.status_code != 200:
