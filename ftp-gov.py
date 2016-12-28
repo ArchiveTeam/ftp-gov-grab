@@ -1,67 +1,76 @@
+import re
 import sys
 import urllib.request
-import os
-import re
 
-wpull_hook = globals().get('wpull_hook') # silence code checkers
-tries = 0
-max_tries = 5
+from wpull.application.hook import Actions
+from wpull.application.plugin import WpullPlugin, PluginFunctions, hook
+from wpull.protocol.abstract.request import BaseResponse
+from wpull.pipeline.session import ItemSession
 
-def handle_response(url_info, record_info, response_info):
-    global tries
-    global max_tries
+tries = {}
 
-    response_code = response_info['response_code']
 
-    if 200 <= response_code <= 299:
-        tries = 0
-        return wpull_hook.actions.NORMAL
-    elif response_code in (530, 550):
-        tries = 0
-        return wpull_hook.actions.FINISH
-    else:
-        if tries >= max_tries:
-            raise Exception('Something went wrong, received status code %d %d times. ABORTING...'%(response_code, max_tries))
-        print('You received status code %d. Retrying...'%response_code)
+class FTPPlugin(WpullPlugin):
+    @hook(PluginFunctions.handle_response)
+    def handle_resp(self, item_session: ItemSession):
+        if 200 <= item_session.response.response_code() <= 299:
+            tries[item_session.request.url_info.url] = 0
+            return Actions.NORMAL
+        elif item_session.response.response_code() in (530, 550):
+            tries[item_session.request.url_info.url] = 0
+            return Actions.FINISH
+
+        if tries[item_session.request.url_info.url] >= 5:
+            raise Exception('Something went wrong, received status code %d 5 times. ABORTING...' % (response_code))
+
+        print('You received status code %d. Retrying...' % response_code)
         sys.stdout.flush()
-        tries += 1
-        return wpull_hook.actions.RETRY
 
-def handle_error(url_info, record_info, error_info):
-    global max_tries
+        if not item_session.request.url_info.url in tries:
+            tries[item_session.request.url_info.url] = 0
+        tries[item_session.request.url_info.url] += 1
 
-    tries = record_info['try_count']
-    ftp_server = re.search(r'^ftp:\/\/([^/]+)', url_info['url']).group(1)
+        return Actions.RETRY
 
-    if url_info['url'].endswith('/'):
-        item_file = ftp_server + '_dir_not_found'
-    else:
-        item_file = ftp_server + '_file_not_found'
+    @hook(PluginFunctions.handle_error)
+    def handle_err(self, item_session: ItemSession, error: BaseException):
+        ftp_server = re.search(r'^ftp:\/\/([^/]+)', item_session.request.url).group(1)
+        item_file = ftp_server + '_bad_url'
+        item_url = 'http://master.newsbuddy.net/ftplists/' + item_file
 
-    item_url = 'http://master.newsbuddy.net/ftplists/{0}'.format(item_file)
-    item_message = urllib.request.urlopen(item_url)
-    if not item_message.getcode() in (200, 404):
-        raise Exception('You received status code %d with URL %s'%(item_list.status_code, item_url))
-    item_message_text = item_message.read()
-    if '/NONEXISTINGFILEdgdjahxnedadbacxjbc' in item_message_text.decode('utf-8'):
-        item_messages = item_message_text.decode('utf-8').split('/NONEXISTINGFILEdgdjahxnedadbacxjbc')
-    else:
-        item_messages = item_message_text.decode('utf-8').split('NONEXISTINGFILEdgdjahxnedadbacxjbc')
+        item_message = urllib.request.urlopen(item_url)
+        item_message_text = item_message.read()
+        item_messages = item_message_text.decode('utf-8') \
+            .split('NONEXISTINGFILEdgdjahxnedadbacxjbc')
 
-    if item_message.getcode() == 200:
-        try:
-            urllib.request.urlopen(url_info["url"])
-        except Exception as error:
-            error_message = str(error)
-            print("ERROR Received error message " + error_message)
-            sys.stdout.flush()
-            if all(text in error_message for text in item_messages):
-                print('INFO ' + url_info['url'] + ' does not exist, skipping...')
+        if item_message.getcode() == 200:
+            try:
+                urllib.request.urlopen(item_session.request.url)
+            except Exception as error:
+                error_message = str(error)
+                print("ERROR Received error message " + error_message)
                 sys.stdout.flush()
-                return wpull_hook.actions.FINISH
 
-    if tries >= max_tries:
-        raise Exception('Something went wrong... ABORTING...')
+                if all(text in error_message for text in item_messages):
+                    print('INFO ' + item_session.request.url
+                        + ' does not exist, skipping...')
+                    sys.stdout.flush()
 
-wpull_hook.callbacks.handle_response = handle_response
-wpull_hook.callbacks.handle_error = handle_error
+                    return Actions.FINISH
+
+        elif item_message.getcode() == 404:
+            raise Exception('URL ' + item_url + ' doesn\'t exist. ABORTING...')
+
+        else:
+            raise Exception('Received status code '
+                + str(item_list.status_code) + ' for URL ' + item_url
+                + '. ABORTING...')
+
+        if not item_session.request.url in tries:
+            tries[item_session.request.url] = 0
+        tries[item_session.request.url] += 1
+
+        if tries[item_session.request.url] >= 5:
+            raise Exception('Something went wrong... ABORTING...')
+
+        return Actions.RETRY

@@ -1,4 +1,5 @@
 from distutils.version import StrictVersion
+import codecs
 import datetime
 import hashlib
 import os
@@ -15,6 +16,7 @@ except ImportError:
     sys.exit(1)
 
 import seesaw
+import warc
 from seesaw.config import realize, NumberConfigValue
 from seesaw.externalprocess import WgetDownload, ExternalProcess
 from seesaw.item import ItemInterpolation, ItemValue
@@ -39,13 +41,14 @@ if StrictVersion(seesaw.__version__) < StrictVersion("0.8.3"):
 # 2. prints the required version string
 WPULL_EXE = find_executable(
     "Wpull",
-    re.compile(r"\b1\.2\.3\b"),
+    re.compile(r"\b2\.0\.1\b"),
     [
         "./wpull",
-        os.path.expanduser("~/.local/share/wpull-1.2.3/wpull"),
+        os.path.expanduser("~/.local/share/wpull-2.0.1/wpull"),
         os.path.expanduser("~/.local/bin/wpull"),
+        "/usr/local/bin/wpull",
         "./wpull_bootstrap",
-        "wpull",
+        #"wpull"
     ]
 )
 
@@ -58,7 +61,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20161217.01"
+VERSION = "20161228.01"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -126,6 +129,7 @@ class PrepareDirectories(SimpleTask):
         )
 
         open("%(item_dir)s/%(warc_file_base)s.warc.gz" % item, "w").close()
+        open("%(item_dir)s/%(warc_file_base)s.records" % item, "w").close()
 
 
 class MoveFiles(SimpleTask):
@@ -139,9 +143,35 @@ class MoveFiles(SimpleTask):
 
         os.rename("%(item_dir)s/%(warc_file_base)s.warc.gz" % item,
                   "%(data_dir)s/%(warc_file_base)s.warc.gz" % item)
+        os.rename("%(item_dir)s/%(warc_file_base)s.records" % item,
+                  "%(data_dir)s/%(warc_file_base)s.records" % item)
 
         shutil.rmtree("%(item_dir)s" % item)
 
+
+class ExtractRecordsInfo(SimpleTask):
+    def __init__(self):
+        SimpleTask.__init__(self, "ExtractRecordsInfo")
+
+    def process(self, item):
+        warc_filename = ("%(item_dir)s/%(warc_file_base)s.warc.gz" % item)
+        warc_file_size = os.path.getsize(warc_filename)
+        warc_file = warc.WARCFile(warc_filename)
+        records = []
+        records_filename = ("%(item_dir)s/%(warc_file_base)s.records" % item)
+
+        while warc_file_size > warc_file.tell():
+            for record in warc_file:
+                if record.header['WARC-Type'] == 'resource' \
+                      and record.header['WARC-Target-URI'].startswith('ftp://'):
+                    records.append(';'.join([
+                        record.header['WARC-Block-Digest'],
+                        record.header['WARC-Record-ID'],
+                        record.header['WARC-Date'],
+                        record.header['WARC-Target-URI']]))
+
+        with codecs.open(records_filename, 'w', encoding='utf8') as f:
+            f.write('\n'.join(records))
 
 def get_hash(filename):
     with open(filename, 'rb') as in_file:
@@ -169,7 +199,7 @@ class WgetArgs(object):
         wget_args = [
             WPULL_EXE,
             "-nv",
-            "--python-script", "ftp-gov.py",
+            "--plugin-script", "ftp-gov.py",
             "-o", ItemInterpolation("%(item_dir)s/wpull.log"),
             "--no-check-certificate",
             "--database", ItemInterpolation("%(item_dir)s/wpull.db"),
@@ -186,13 +216,16 @@ class WgetArgs(object):
             "--warc-header", "operator: Archive Team",
             "--warc-header", "ftp-gov-dld-script-version: " + VERSION,
             "--warc-header", ItemInterpolation("ftp-gov-item: %(item_name)s"),
-            ]
+        ]
 
         item_name = item['item_name']
         assert ':' in item_name
         item_sort, item_file = item_name.split(':', 1)
 
         MAX_SIZE = 10737418240
+
+        if 'aftp.cmdl.noaa.gov' in item_file:
+            raise Exception('Skipping this FTP.')
         
         skipped = requests.get('https://raw.githubusercontent.com/ArchiveTeam/ftp-items/master/skipped_sites')
         if skipped.status_code != 200:
@@ -218,7 +251,7 @@ class WgetArgs(object):
                 if '#' in url:
                     raise Exception('%s containes a bad character.'%(url))
                 else:
-                    wget_args.append("{0}".format(url))
+                    wget_args.append(url)
 
         if 'bind_address' in globals():
             wget_args.extend(['--bind-address', globals()['bind_address']])
@@ -268,6 +301,7 @@ pipeline = Pipeline(
         },
         id_function=stats_id_function,
     ),
+    ExtractRecordsInfo(),
     MoveFiles(),
     LimitConcurrent(
         NumberConfigValue(min=1, max=20, default="20",
@@ -279,6 +313,7 @@ pipeline = Pipeline(
             version=VERSION,
             files=[
                 ItemInterpolation("%(data_dir)s/%(warc_file_base)s.warc.gz"),
+                ItemInterpolation("%(data_dir)s/%(warc_file_base)s.records"),
             ],
             rsync_target_source_path=ItemInterpolation("%(data_dir)s/"),
             rsync_extra_args=[
