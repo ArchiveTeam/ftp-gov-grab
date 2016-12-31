@@ -61,7 +61,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20161231.01"
+VERSION = "20161231.02"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -268,7 +268,7 @@ class WgetArgs(object):
 project = Project(
     title="ftp-gov",
     project_html="""
-        <img class="project-logo" alt="Project logo" src="http://archiveteam.org/images/thumb/0/09/NOAA_logo.png/240px-NOAA_logo.png" height="50px" title=""/>
+        <img class="project-logo" alt="Project logo" src="http://archiveteam.org/images/thumb/b/bd/Great_Seal_of_the_United_States.png/240px-Great_Seal_of_the_United_States.png" height="50px" title=""/>
         <h2>USA-Gov <span class="links"><a href="http://archiveteam.org/index.php?title=USA-Gov">Website</a> &middot;
             <a href="http://tracker.archiveteam.org/ftp-gov/">Leaderboard</a></span></h2>
         <p>Archiving all government FTPs!</p>
