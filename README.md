@@ -1,7 +1,7 @@
 ftp-gov-grab
 =============
 
-More information about the archiving project can be found on the ArchiveTeam wiki: [FTP-GOV](http://archiveteam.org/index.php?title=USA-Gov)
+More information about the archiving project can be found on the ArchiveTeam wiki: [FTP GOV](http://archiveteam.org/index.php?title=FTP_GOV)
 
 Setup instructions
 =========================
@@ -12,18 +12,22 @@ In most of the below cases, there will be a web interface running at http://loca
 
 **If anything goes wrong while running the commands below, please scroll down to the bottom of this page. There's troubleshooting information there.**
 
+Running with a warrior
+-------------------------
+
+Follow the [instructions on the ArchiveTeam wiki](http://archiveteam.org/index.php?title=Warrior) for installing the Warrior, and select the "FTP GOV" project in the Warrior interface.
+
 Running without a warrior
 -------------------------
 To run this outside the warrior, clone this repository, cd into its directory and run:
 
     pip install --upgrade seesaw
-    pip2 install warc
-    pip3 install --upgrade wpull
+    pip2 install --upgrade warc
 
-Grab a copy of Wpull 1.2.3 from https://launchpad.net/wpull/+download:
+Grab a copy of Wpull 2.0.1 from https://launchpad.net/wpull/+download:
 
-    wget https://launchpad.net/wpull/trunk/v1.2.3/+download/wpull-1.2.3-linux-x86_64-3.4.3-20160302011013.zip
-    python -c "import zipfile; f=zipfile.ZipFile('wpull-1.2.3-linux-x86_64-3.4.3-20160302011013.zip'); f.extractall('./')"
+    wget https://launchpad.net/wpull/trunk/v2.0.1/+download/wpull-2.0.1-linux-x86_64-3.4.3-20161230193838.zip
+    python -c "import zipfile; f=zipfile.ZipFile('wpull-2.0.1-linux-x86_64-3.4.3-20161230193838.zip'); f.extractall('./')"
     chmod +x ./wpull
 
 then start downloading with:
@@ -61,7 +65,7 @@ Distribution-specific setup
     apt-get update && install -y git-core libgnutls-dev screen python-dev python-pip bzip2 zlib1g-dev unzip
     pip install --upgrade seesaw
     su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/ftp-gov-grab.git" archiveteam
-    su -c "cd /home/archiveteam/ftp-gov-grab/; wget https://launchpad.net/wpull/trunk/v1.2.3/+download/wpull-1.2.3-linux-x86_64-3.4.3-20160302011013.zip; unzip wpull-1.2.3-linux-x86_64-3.4.3-20160302011013.zip; chmod +x ./wpull" archiveteam
+    su -c "cd /home/archiveteam/ftp-gov-grab/; wget https://launchpad.net/wpull/trunk/v2.0.1/+download/wpull-2.0.1-linux-x86_64-3.4.3-20161230193838.zip; unzip wpull-2.0.1-linux-x86_64-3.4.3-20161230193838.zip; chmod +x ./wpull" archiveteam
     screen su -c "cd /home/archiveteam/ftp-gov-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
     [... ctrl+A D to detach ...]
 
@@ -103,7 +107,7 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 3. Modify the run-pipeline script in seesaw to point at `#!/usr/bin/python2` instead of `#!/usr/bin/python`.
 4. `useradd --system --group users --shell /bin/bash --create-home archiveteam`
 5. `su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/ftp-gov-grab.git" archiveteam`
-6. `su -c "cd /home/archiveteam/ftp-gov-grab/; wget https://launchpad.net/wpull/trunk/v1.2.3/+download/wpull-1.2.3-linux-x86_64-3.4.3-20160302011013.zip; unzip wpull-1.2.3-linux-x86_64-3.4.3-20160302011013.zip; chmod +x ./wpull" archiveteam`
+6. `su -c "cd /home/archiveteam/ftp-gov-grab/; wget https://launchpad.net/wpull/trunk/v2.0.1/+download/wpull-2.0.1-linux-x86_64-3.4.3-20161230193838.zip; unzip wpull-2.0.1-linux-x86_64-3.4.3-20161230193838.zip; chmod +x ./wpull" archiveteam`
 7. `screen su -c "cd /home/archiveteam/ftp-gov-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
 
 ### For FreeBSD:
@@ -143,4 +147,4 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 
 ### Other problems
 
-Have an issue not listed here? Join us on IRC and ask! We can be found at irc.efnet.org #cheetoflee.
+Have an issue not listed here? Join us on IRC and ask! We can be found at irc.efnet.org #cheetoftp.
