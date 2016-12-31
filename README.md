@@ -12,16 +12,13 @@ In most of the below cases, there will be a web interface running at http://loca
 
 **If anything goes wrong while running the commands below, please scroll down to the bottom of this page. There's troubleshooting information there.**
 
-Running with a warrior
--------------------------
-
-Follow the [instructions on the ArchiveTeam wiki](http://archiveteam.org/index.php?title=Warrior) for installing the Warrior, and select the "FTP-GOV" project in the Warrior interface.
-
 Running without a warrior
 -------------------------
 To run this outside the warrior, clone this repository, cd into its directory and run:
 
     pip install --upgrade seesaw
+    pip2 install warc
+    pip3 install --upgrade wpull
 
 Grab a copy of Wpull 1.2.3 from https://launchpad.net/wpull/+download:
 
