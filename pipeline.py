@@ -48,7 +48,7 @@ WPULL_EXE = find_executable(
         os.path.expanduser("~/.local/bin/wpull"),
         "/usr/local/bin/wpull",
         "./wpull_bootstrap",
-        #"wpull"
+        "wpull"
     ]
 )
 
@@ -61,7 +61,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20161228.02"
+VERSION = "20161231.01"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
