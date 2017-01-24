@@ -61,7 +61,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20161231.02"
+VERSION = "20170124.01"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -227,10 +227,15 @@ class WgetArgs(object):
         skipped = requests.get('https://raw.githubusercontent.com/ArchiveTeam/ftp-items/master/skipped_sites')
         if skipped.status_code != 200:
             raise Exception('Something went wrong getting the skipped_sites list from GitHub. ABORTING.')
-        skipped_items = skipped.text.splitlines()
-        for skipped_item in skipped_items:
+        skipped_dirs = requests.get('https://raw.githubusercontent.com/ArchiveTeam/ftp-items/master/skipped_dirs')
+        if skipped_dirs.status_code != 200:
+            raise Exception('Something went wrong getting the skipped_sites list from GitHub. ABORTING.')
+
+        for skipped_item in skipped.text.splitlines():
             if item_file.startswith(skipped_item):
                 raise Exception('This FTP will be skipped...')
+
+        skipped_dirs_ = ['ftp://' + s.strip().replace(':', '', 1) for s in skipped_dirs.text.splitlines()]
 
         item_url = 'http://master.newsbuddy.net/ftplists/{0}'.format(item_file)
         item_list = requests.get(item_url)
@@ -240,15 +245,21 @@ class WgetArgs(object):
         if itemsize > MAX_SIZE:
             raise Exception('Item is %d bytes. This is larger then %d bytes. ABORTING.'%(itemsize, MAX_SIZE))
 
-        for url in item_list.text.splitlines():
-            if url.startswith('ftp://'):
-                url = url.replace('&#32;', '%20').replace('&amp;', '&')
-                url = urllib.unquote(url)
+        urls = [u for u in item_list.text.splitlines() if u.startswith('ftp://') and not any([str(u).startswith(skip) for skip in skipped_dirs_])]
 
-                if '#' in url:
-                    raise Exception('%s containes a bad character.'%(url))
-                else:
-                    wget_args.append(url)
+        urls.append(item_url)
+
+        print(urls)
+        print(skipped_dirs_)
+
+        for url in urls:
+            url = url.replace('&#32;', '%20').replace('&amp;', '&')
+            url = urllib.unquote(url)
+
+            if '#' in url:
+                raise Exception('%s containes a bad character.'%(url))
+            else:
+                wget_args.append(url)
 
         if 'bind_address' in globals():
             wget_args.extend(['--bind-address', globals()['bind_address']])
@@ -268,7 +279,7 @@ class WgetArgs(object):
 project = Project(
     title="ftp-gov",
     project_html="""
-        <img class="project-logo" alt="Project logo" src="http://archiveteam.org/images/thumb/b/bd/Great_Seal_of_the_United_States.png/240px-Great_Seal_of_the_United_States.png" height="50px" title=""/>
+        <img class="project-logo" alt="Project logo" src="http://archiveteam.org/images/thumb/0/09/NOAA_logo.png/240px-NOAA_logo.png" height="50px" title=""/>
         <h2>USA-Gov <span class="links"><a href="http://archiveteam.org/index.php?title=USA-Gov">Website</a> &middot;
             <a href="http://tracker.archiveteam.org/ftp-gov/">Leaderboard</a></span></h2>
         <p>Archiving all government FTPs!</p>
