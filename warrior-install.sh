@@ -11,8 +11,8 @@ then
 fi
 
 
-echo "Installing warc"
-if ! sudo pip2 install warc
+echo "Installing warcat"
+if ! sudo pip3 install warcat
 then
   exit 1
 fi

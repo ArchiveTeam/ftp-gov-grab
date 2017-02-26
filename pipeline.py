@@ -9,14 +9,14 @@ import shutil
 import time
 import sys
 import urllib
+
 try:
     import requests
 except ImportError:
     print('Please install or update the requests module.')
     sys.exit(1)
-
 import seesaw
-import warc
+import warcat.model
 from seesaw.config import realize, NumberConfigValue
 from seesaw.externalprocess import WgetDownload, ExternalProcess
 from seesaw.item import ItemInterpolation, ItemValue
@@ -61,7 +61,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20170124.01"
+VERSION = "20170226.01"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -147,31 +147,6 @@ class MoveFiles(SimpleTask):
                   "%(data_dir)s/%(warc_file_base)s.records" % item)
 
         shutil.rmtree("%(item_dir)s" % item)
-
-
-class ExtractRecordsInfo(SimpleTask):
-    def __init__(self):
-        SimpleTask.__init__(self, "ExtractRecordsInfo")
-
-    def process(self, item):
-        warc_filename = ("%(item_dir)s/%(warc_file_base)s.warc.gz" % item)
-        warc_file_size = os.path.getsize(warc_filename)
-        warc_file = warc.WARCFile(warc_filename)
-        records = []
-        records_filename = ("%(item_dir)s/%(warc_file_base)s.records" % item)
-
-        while warc_file_size > warc_file.tell():
-            for record in warc_file:
-                if record.header['WARC-Type'] == 'resource' \
-                      and record.header['WARC-Target-URI'].startswith('ftp://'):
-                    records.append(';'.join([
-                        record.header['WARC-Block-Digest'],
-                        record.header['WARC-Record-ID'],
-                        record.header['WARC-Date'],
-                        record.header['WARC-Target-URI']]))
-
-        with codecs.open(records_filename, 'w', encoding='utf8') as f:
-            f.write('\n'.join(records))
 
 def get_hash(filename):
     with open(filename, 'rb') as in_file:
@@ -309,6 +284,7 @@ pipeline = Pipeline(
         },
         id_function=stats_id_function,
     ),
+    ExternalProcess("ExtractRecordsInfo", ["python3", "extract.py", ItemInterpolation("%(item_dir)s/%(warc_file_base)s")]),
     ExtractRecordsInfo(),
     MoveFiles(),
     LimitConcurrent(
