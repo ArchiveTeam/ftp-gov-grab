@@ -60,7 +60,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20170226.02"
+VERSION = "20170226.03"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
@@ -284,7 +284,6 @@ pipeline = Pipeline(
         id_function=stats_id_function,
     ),
     ExternalProcess("ExtractRecordsInfo", ["python3", "extract.py", ItemInterpolation("%(item_dir)s/%(warc_file_base)s")]),
-    ExtractRecordsInfo(),
     MoveFiles(),
     LimitConcurrent(
         NumberConfigValue(min=1, max=20, default="20",
