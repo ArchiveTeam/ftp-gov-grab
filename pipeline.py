@@ -16,7 +16,6 @@ except ImportError:
     print('Please install or update the requests module.')
     sys.exit(1)
 import seesaw
-import warcat.model
 from seesaw.config import realize, NumberConfigValue
 from seesaw.externalprocess import WgetDownload, ExternalProcess
 from seesaw.item import ItemInterpolation, ItemValue
@@ -61,7 +60,7 @@ if not WPULL_EXE:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = "20170226.01"
+VERSION = "20170226.02"
 TRACKER_ID = 'ftp-gov'
 TRACKER_HOST = 'tracker.archiveteam.org'
 
